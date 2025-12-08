@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WordMaster - AI Wordle Solver</title>
+    
+    <style>
+        /* --- CSS 變數定義 (主題系統) --- */
+        :root {
+            /* 核心顏色 (不隨主題變動) */
+            --green: #6aaa64;
+            --yellow: #c9b458;
+            --gray: #787c7e;
+            
+            /* 淺色主題 (預設) */
+            --bg-body: #f8f9fa;
+            --bg-container: #ffffff;
+            --bg-panel: #f1f3f4;
+            --bg-input: #ffffff;
+            --text-main: #212121;
+            --text-sub: #666666;
+            --border: #cccccc;
+            --shadow: rgba(0,0,0,0.1);
+            --modal-bg: #ffffff;
+            --btn-sec-bg: transparent;
+            --btn-sec-text: #666666;
+            --btn-sec-hover: #e0e0e0;
+            
+            /* 轉場動畫 */
+            --transition-speed: 0.3s;
+        }
+
+        /* 深色主題覆寫 */
+        [data-theme="dark"] {
+            --bg-body: #121213;
+            --bg-container: #1a1a1b;
+            --bg-panel: #2c2c2e;
+            --bg-input: #3a3a3c;
+            --text-main: #ffffff;
+            --text-sub: #a6a6a6;
+            --border: #565758;
+            --shadow: rgba(0,0,0,0.5);
+            --modal-bg: #2c2c2e;
+            --btn-sec-bg: transparent;
+            --btn-sec-text: #cccccc;
+            --btn-sec-hover: #3a3a3c;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            margin: 0; padding: 20px; 
+            display: flex; justify-content: center; 
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+
+        .container { 
+            background: var(--bg-container); 
+            width: 100%; max-width: 600px; padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px var(--shadow); 
+            position: relative;
+            transition: background-color var(--transition-speed), box-shadow var(--transition-speed);
+        }
+        
+        /* 標題區 (含主題按鈕) */
+        .header-row { display: flex; justify-content: center; align-items: center; position: relative; margin-bottom: 5px; }
+        h1 { margin: 0; color: var(--text-main); transition: color var(--transition-speed); }
+        
+        /* 主題切換按鈕 */
+        #theme-toggle {
+            position: absolute; right: 0; top: 0;
+            background: none; border: none; font-size: 24px; cursor: pointer;
+            padding: 5px; border-radius: 50%;
+            color: var(--text-main);
+            transition: transform 0.2s;
+        }
+        #theme-toggle:hover { transform: scale(1.1); background-color: var(--bg-panel); }
+
+        .subtitle { text-align: center; color: var(--text-sub); font-size: 0.9em; margin-bottom: 25px; }
+        
+        /* 控制區塊 */
+        .panel { 
+            background: var(--bg-panel); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; 
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            transition: background-color var(--transition-speed);
+        }
+        
+        .control-group { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .panel label { font-weight: bold; font-size: 16px; white-space: nowrap; }
+        
+        select { 
+            padding: 8px 12px; border-radius: 6px; 
+            border: 1px solid var(--border); 
+            font-size: 15px; width: 100%; max-width: 220px; 
+            cursor: pointer; 
+            background-color: var(--bg-input); color: var(--text-main);
+            transition: border-color 0.2s, background-color var(--transition-speed), color var(--transition-speed);
+        }
+        select:hover { border-color: var(--text-main); }
+        
+        /* 遊戲輸入區 */
+        .game-area { display: flex; flex-direction: column; gap: 15px; align-items: center; margin: 20px 0; }
+        input#guess-input { 
+            font-size: 24px; padding: 10px; width: 200px; text-align: center; 
+            text-transform: uppercase; letter-spacing: 5px; font-weight: bold;
+            border: 2px solid var(--border); border-radius: 8px;
+            background-color: var(--bg-input); color: var(--text-main);
+            transition: border-color 0.2s, background-color var(--transition-speed), color var(--transition-speed);
+        }
+        input#guess-input:focus { outline: none; border-color: var(--green); }
+        
+        /* 顏色方塊 */
+        .feedback-container { display: flex; gap: 8px; }
+        .tile { 
+            width: 50px; height: 50px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: bold; color: white;
+            background-color: var(--gray);
+            border-radius: 4px; cursor: pointer; user-select: none;
+            transition: transform 0.1s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .tile:active { transform: scale(0.95); }
+        .tile[data-state="Y"] { background-color: var(--yellow); }
+        .tile[data-state="G"] { background-color: var(--green); }
+
+        .instruction-text {
+            font-size: 13px; color: var(--text-sub); margin-top: -10px; margin-bottom: 5px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        /* 按鈕樣式 */
+        button.action-btn {
+            background-color: var(--text-main); color: var(--bg-container); /* 自動反轉黑白 */
+            padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px;
+            cursor: pointer; width: 100%; font-weight: bold; transition: opacity 0.2s;
+        }
+        button.action-btn:hover { opacity: 0.9; }
+        
+        button.reset-btn {
+            background-color: var(--btn-sec-bg); color: var(--btn-sec-text); 
+            border: 1px solid var(--border);
+            padding: 8px 16px; font-size: 14px; border-radius: 6px; cursor: pointer;
+            white-space: nowrap; transition: all 0.2s;
+        }
+        button.reset-btn:hover { background-color: var(--btn-sec-hover); color: var(--text-main); }
+
+        /* 建議列表 */
+        #suggestions { list-style: none; padding: 0; margin-top: 10px; }
+        .suggestion-item { 
+            display: flex; justify-content: space-between; padding: 10px; 
+            border-bottom: 1px solid var(--border); cursor: pointer; 
+            transition: background-color 0.2s;
+        }
+        .suggestion-item:hover { background-color: var(--bg-panel); }
+        .suggestion-word { font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; }
+        .suggestion-score { color: var(--text-sub); font-size: 14px; }
+
+        /* 載入遮罩 */
+        #loader { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); z-index: 999;
+            backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white;
+        }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        #status-bar { text-align: center; font-size: 14px; color: var(--green); font-weight: bold; min-height: 20px;}
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.2s;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        
+        .modal-box {
+            background: var(--modal-bg); padding: 25px; border-radius: 12px; width: 90%; max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transform: translateY(20px); transition: transform 0.2s, background-color var(--transition-speed);
+            text-align: center; color: var(--text-main);
+        }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+        .modal-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+        .modal-msg { color: var(--text-sub); margin-bottom: 20px; line-height: 1.5; font-size: 16px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: center; }
+        .modal-btn { padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-size: 15px; font-weight: bold; flex: 1; }
+        .btn-confirm { background: var(--green); color: white; }
+        .btn-confirm:hover { background: #5a8f53; }
+        .btn-cancel { background: var(--btn-sec-hover); color: var(--text-main); }
+        .btn-cancel:hover { background: var(--border); }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div id="loading-text">Loading App...</div>
+</div>
+
+<div id="custom-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div id="modal-title" class="modal-title">Title</div>
+        <div id="modal-msg" class="modal-msg">Message</div>
+        <div class="modal-actions">
+            <button id="modal-btn-cancel" class="modal-btn btn-cancel">Cancel</button>
+            <button id="modal-btn-confirm" class="modal-btn btn-confirm">OK</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="header-row">
+        <h1>WordMaster</h1>
+        <button id="theme-toggle" title="Toggle Dark Mode">🌙</button>
+    </div>
+    <div class="subtitle">Wordle Solver (Web Edition)</div>
+
+    <div class="panel">
+        <div class="control-group">
+            <label>Strategy:</label>
+            <select id="mode-selector">
+                <option value="standard" selected>Standard (Include All)</option>
+                <option value="hybrid">Wordle (Exclude Past Answers)</option>
+            </select>
+        </div>
+        <button class="reset-btn" id="restart-btn">Reset Game</button>
+    </div>
+
+    <div class="game-area">
+        <input type="text" id="guess-input" maxlength="5" placeholder="GUESS">
+        
+        <div class="feedback-container">
+            <div class="tile" data-index="0" data-state="X">X</div>
+            <div class="tile" data-index="1" data-state="X">X</div>
+            <div class="tile" data-index="2" data-state="X">X</div>
+            <div class="tile" data-index="3" data-state="X">X</div>
+            <div class="tile" data-index="4" data-state="X">X</div>
+        </div>
+        
+        <div class="instruction-text">
+            <span>👆 Click tiles to switch: </span>
+            <span class="color-dot" style="background:var(--gray)"></span>
+            <span>→</span>
+            <span class="color-dot" style="background:var(--yellow)"></span>
+            <span>→</span>
+            <span class="color-dot" style="background:var(--green)"></span>
+        </div>
+
+        <button class="action-btn" id="submit-btn">Analyze Feedback</button>
+    </div>
+
+    <div id="status-bar">Ready</div>
+    
+    <div style="margin-top: 20px;">
+        <h3>Top Suggestions</h3>
+        <ul id="suggestions"></ul>
+    </div>
+</div>
+
+<script type="module">
+    import { WordleSolver } from './solver.js';
+
+    let solver;
+    let attempts = 0;
+
+    // --- Theme Logic ---
+    function initTheme() {
+        const toggleBtn = document.getElementById("theme-toggle");
+        // 1. 讀取儲存的設定
+        const savedTheme = localStorage.getItem("theme");
+        // 2. 或是讀取系統偏好
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        
+        let currentTheme = savedTheme || (prefersDark ? "dark" : "light");
+        
+        // 套用主題
+        document.body.setAttribute("data-theme", currentTheme);
+        updateThemeIcon(currentTheme);
+
+        toggleBtn.onclick = () => {
+            currentTheme = currentTheme === "light" ? "dark" : "light";
+            document.body.setAttribute("data-theme", currentTheme);
+            localStorage.setItem("theme", currentTheme);
+            updateThemeIcon(currentTheme);
+        };
+    }
+
+    function updateThemeIcon(theme) {
+        const btn = document.getElementById("theme-toggle");
+        btn.innerText = theme === "dark" ? "☀️" : "🌙";
+    }
+
+    // --- Modal System ---
+    const modalOverlay = document.getElementById("custom-modal");
+    const modalTitle = document.getElementById("modal-title");
+    const modalMsg = document.getElementById("modal-msg");
+    const btnConfirm = document.getElementById("modal-btn-confirm");
+    const btnCancel = document.getElementById("modal-btn-cancel");
+
+    let modalResolve = null;
+
+    function showModal(title, message, isConfirm = false) {
+        return new Promise((resolve) => {
+            modalTitle.innerText = title;
+            modalMsg.innerText = message;
+            
+            if (isConfirm) {
+                btnCancel.style.display = "block";
+                btnConfirm.innerText = "Yes";
+            } else {
+                btnCancel.style.display = "none";
+                btnConfirm.innerText = "OK";
+            }
+
+            modalOverlay.classList.add("active");
+            modalResolve = resolve;
+            btnConfirm.focus();
+        });
+    }
+
+    function closeModal(result) {
+        modalOverlay.classList.remove("active");
+        if (modalResolve) {
+            modalResolve(result);
+            modalResolve = null;
+        }
+    }
+
+    btnConfirm.onclick = () => closeModal(true);
+    btnCancel.onclick = () => closeModal(false);
+    modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) closeModal(false);
+    };
+
+    // --- Helper Functions ---
+    function showLoading(msg) {
+        const loader = document.getElementById("loading-text");
+        const loaderDiv = document.getElementById("loader");
+        if (loader) loader.innerText = msg;
+        if (loaderDiv) loaderDiv.style.display = "flex";
+    }
+    
+    function hideLoading() {
+        const loaderDiv = document.getElementById("loader");
+        if (loaderDiv) loaderDiv.style.display = "none";
+    }
+
+    function resetInput() {
+        const guessInput = document.getElementById("guess-input");
+        if (guessInput) {
+            guessInput.value = "";
+            guessInput.focus();
+        }
+        
+        const tiles = document.querySelectorAll(".tile");
+        tiles.forEach(tile => {
+            tile.innerText = "X";
+            tile.dataset.state = "X";
+            tile.style.backgroundColor = "var(--gray)";
+        });
+    }
+
+    function getFeedbackString() {
+        const tiles = document.querySelectorAll(".tile");
+        return Array.from(tiles).map(t => t.dataset.state).join("");
+    }
+
+    // --- Game Logic ---
+    async function initGame() {
+        showLoading("Loading Dictionary...");
+        
+        const modeSelector = document.getElementById("mode-selector");
+        const modeVal = modeSelector ? modeSelector.value : "standard";
+        
+        const config = {
+            excludeHistory: false, 
+            hybridMode: (modeVal === "hybrid")
+        };
+
+        try {
+            solver = new WordleSolver();
+            await solver.init('data/vocabularies.csv', 'data/answers.csv', config);
+            
+            attempts = 0;
+            resetInput();
+            updateSuggestions();
+            hideLoading();
+            
+            const statusBar = document.getElementById("status-bar");
+            // 讓顯示名稱更漂亮
+            let modeDisplay = "Standard";
+            if (modeVal === "hybrid") modeDisplay = "Hybrid";
+            
+            if (statusBar) statusBar.innerText = `Mode: ${modeDisplay} | ${solver.words.length} words`;
+        } catch (e) {
+            console.error(e);
+            await showModal("Init Error", "Failed to initialize: " + e.message);
+            hideLoading();
+        }
+    }
+
+    async function handleResetRequest() {
+        if (attempts > 0) {
+            const confirmed = await showModal(
+                "Reset Game?", 
+                "Are you sure you want to reset the current game? All progress will be lost.", 
+                true
+            );
+            if (!confirmed) return;
+        }
+        await initGame();
+    }
+
+    async function submitGuess() {
+        const guessInput = document.getElementById("guess-input");
+        const guess = guessInput.value.trim().toUpperCase();
+        
+        if (guess.length !== 5 || !/^[A-Z]{5}$/.test(guess)) {
+            await showModal("Invalid Input", "Please enter a valid 5-letter word.");
+            guessInput.focus();
+            return;
+        }
+
+        const feedback = getFeedbackString();
+        showLoading("Analyzing...");
+        
+        setTimeout(async () => {
+            try {
+                attempts++;
+                
+                if (solver.hybridMode && attempts === 1) {
+                    solver.excludePastAnswers();
+                }
+
+                solver.filterWords(guess, feedback);
+                updateSuggestions();
+                resetInput();
+                
+                hideLoading();
+                
+                const statusBar = document.getElementById("status-bar");
+                if (feedback === "GGGGG") {
+                    if (statusBar) statusBar.innerText = "Solved!";
+                    
+                    const playAgain = await showModal(
+                        "Success!", 
+                        `Congratulations! Solved in ${attempts} attempts.\n\nPlay again?`, 
+                        true
+                    );
+                    
+                    if (playAgain) {
+                        await initGame();
+                    }
+                } else {
+                    if (statusBar) statusBar.innerText = `Remaining: ${solver.words.length} words`;
+                }
+            } catch (e) {
+                console.error(e);
+                hideLoading();
+                await showModal("Error", e.message);
+            }
+        }, 50);
+    }
+
+    function updateSuggestions() {
+        const suggestionList = document.getElementById("suggestions");
+        if (!suggestionList) return;
+        
+        suggestionList.innerHTML = "";
+        const top = solver.getTopGuesses(10);
+        
+        if (top.length === 0) {
+            suggestionList.innerHTML = "<li style='padding:10px;text-align:center'>No words found!</li>";
+            return;
+        }
+
+        const guessInput = document.getElementById("guess-input");
+
+        top.forEach(item => {
+            const li = document.createElement("li");
+            li.className = "suggestion-item";
+            const scoreDisplay = `Score: ${item.score}`;
+            
+            li.innerHTML = `
+                <span class="suggestion-word">${item.word}</span>
+                <span class="suggestion-score">${scoreDisplay}</span>
+            `;
+            li.onclick = () => { if(guessInput) guessInput.value = item.word; };
+            suggestionList.appendChild(li);
+        });
+    }
+
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initTheme(); // 初始化主題
+
+        const submitBtn = document.getElementById("submit-btn");
+        const restartBtn = document.getElementById("restart-btn");
+        const modeSelector = document.getElementById("mode-selector");
+        const tiles = document.querySelectorAll(".tile");
+
+        if (submitBtn) submitBtn.onclick = submitGuess;
+        if (restartBtn) restartBtn.onclick = handleResetRequest;
+
+        if (modeSelector) {
+            let currentMode = modeSelector.value;
+
+            modeSelector.addEventListener('change', async function() {
+                if (attempts > 0) {
+                    const confirmed = await showModal(
+                        "Change Strategy?", 
+                        "Changing strategy will restart the game. Do you want to continue?", 
+                        true
+                    );
+                    
+                    if (!confirmed) {
+                        this.value = currentMode;
+                        return;
+                    }
+                }
+                
+                currentMode = this.value;
+                this.blur();
+                await initGame();
+            });
+        }
+
+        tiles.forEach(tile => {
+            tile.onclick = () => {
+                const states = ["X", "Y", "G"];
+                const colors = {"X": "var(--gray)", "Y": "var(--yellow)", "G": "var(--green)"};
+                const current = tile.dataset.state;
+                const next = states[(states.indexOf(current) + 1) % 3];
+                tile.dataset.state = next;
+                tile.innerText = next;
+                tile.style.backgroundColor = colors[next];
+            };
+        });
+
+        const guessInput = document.getElementById("guess-input");
+        if (guessInput) {
+            guessInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") submitGuess();
+            });
+        }
+
+        initGame();
+    });
+</script>
+
+</body>
+</html>
