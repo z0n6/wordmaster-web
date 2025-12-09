@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WordMaster - AI Wordle Solver</title>
+    <title>WordMaster - Smart Wordle Solver</title>
 
 	<meta name="google-site-verification" content="0x_Huk8a-i9FfQcbUfeNLZgAYWBTHLxDaO06T53YOOE" />
 
-	<meta name="description" content="An advanced Wordle solver powered by Global Entropy algorithms. Maximize your win rate with Hybrid Strategy and smart suggestions.">
+	<meta name="description" content="An efficient Wordle solver powered by Frequency Analysis. Filter out past answers to maximize your win rate.">
     <meta name="keywords" content="Wordle, Wordle Solver, Helper, AI, Entropy, Algorithm, Python, JavaScript">
     <meta name="author" content="z0n6">
 
     <meta property="og:title" content="WordMaster - The Smartest Wordle Solver">
-    <meta property="og:description" content="Don't lose your streak! Use science and information entropy to solve Wordle puzzles efficiently.">
+    <meta property="og:description" content="Don't lose your streak! Use smart frequency analysis to solve Wordle puzzles efficiently.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://z0n6.github.io/wordmaster-web/">
     <meta property="og:image" content="https://z0n6.github.io/wordmaster-web/og-image.png">
@@ -22,14 +22,11 @@
     <meta name="twitter:description" content="Solve Wordle fast using Information Entropy algorithms.">
     
     <style>
-        /* --- CSS 變數定義 (主題系統) --- */
         :root {
-            /* 核心顏色 (不隨主題變動) */
             --green: #6aaa64;
             --yellow: #c9b458;
             --gray: #787c7e;
             
-            /* 淺色主題 (預設) */
             --bg-body: #f8f9fa;
             --bg-container: #ffffff;
             --bg-panel: #f1f3f4;
@@ -43,11 +40,9 @@
             --btn-sec-text: #666666;
             --btn-sec-hover: #e0e0e0;
             
-            /* 轉場動畫 */
             --transition-speed: 0.3s;
         }
 
-        /* 深色主題覆寫 */
         [data-theme="dark"] {
             --bg-body: #121213;
             --bg-container: #1a1a1b;
@@ -81,11 +76,9 @@
             transition: background-color var(--transition-speed), box-shadow var(--transition-speed);
         }
         
-        /* 標題區 (含主題按鈕) */
         .header-row { display: flex; justify-content: center; align-items: center; position: relative; margin-bottom: 5px; }
         h1 { margin: 0; color: var(--text-main); transition: color var(--transition-speed); }
         
-        /* 主題切換按鈕 */
         #theme-toggle {
             position: absolute; right: 0; top: 0;
             background: none; border: none; font-size: 24px; cursor: pointer;
@@ -97,27 +90,55 @@
 
         .subtitle { text-align: center; color: var(--text-sub); font-size: 0.9em; margin-bottom: 25px; }
         
-        /* 控制區塊 */
+		/* Panel Styles */
         .panel { 
             background: var(--bg-panel); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; 
             display: flex; align-items: center; justify-content: space-between; gap: 10px;
             transition: background-color var(--transition-speed);
         }
         
-        .control-group { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .control-group { 
+			display: flex; align-items: center; gap: 10px;
+			flex: 1;
+			min-width: 250px;
+		}
         .panel label { font-weight: bold; font-size: 16px; white-space: nowrap; }
         
         select { 
             padding: 8px 12px; border-radius: 6px; 
             border: 1px solid var(--border); 
-            font-size: 15px; width: 100%; max-width: 220px; 
+            font-size: 15px; 
+            flex: 1;
+			width: 100%; 
+            ddmax-width: 220px; 
             cursor: pointer; 
             background-color: var(--bg-input); color: var(--text-main);
             transition: border-color 0.2s, background-color var(--transition-speed), color var(--transition-speed);
         }
         select:hover { border-color: var(--text-main); }
+
+		/* Mobile Layout */
+        @media (max-width: 600px) {
+            .panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .control-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+                min-width: 0;
+            }
+            select {
+                width: 100%;
+            }
+            button.reset-btn {
+                width: 100%;
+                margin-top: 5px;
+            }
+        }
         
-        /* 遊戲輸入區 */
+        /* Game Area */
         .game-area { display: flex; flex-direction: column; gap: 15px; align-items: center; margin: 20px 0; }
         input#guess-input { 
             font-size: 24px; padding: 10px; width: 200px; text-align: center; 
@@ -128,7 +149,6 @@
         }
         input#guess-input:focus { outline: none; border-color: var(--green); }
         
-        /* 顏色方塊 */
         .feedback-container { display: flex; gap: 8px; }
         .tile { 
             width: 50px; height: 50px; 
@@ -149,7 +169,7 @@
         }
         .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-        /* 按鈕樣式 */
+        /* Buttons */
         button.action-btn {
             background-color: var(--text-main); color: var(--bg-container); /* 自動反轉黑白 */
             padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px;
@@ -165,7 +185,7 @@
         }
         button.reset-btn:hover { background-color: var(--btn-sec-hover); color: var(--text-main); }
 
-        /* 建議列表 */
+        /* Suggestions List */
         #suggestions { list-style: none; padding: 0; margin-top: 10px; }
         .suggestion-item { 
             display: flex; justify-content: space-between; padding: 10px; 
@@ -176,7 +196,7 @@
         .suggestion-word { font-family: monospace; font-size: 18px; font-weight: bold; letter-spacing: 2px; }
         .suggestion-score { color: var(--text-sub); font-size: 14px; }
 
-        /* 載入遮罩 */
+        /* Loader */
         #loader { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.7); z-index: 999;
@@ -187,6 +207,7 @@
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--green); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px;}
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+		/* Status Bar */
         #status-bar { text-align: center; font-size: 14px; color: var(--green); font-weight: bold; min-height: 20px;}
 
         /* Modal */
@@ -299,14 +320,11 @@
     // --- Theme Logic ---
     function initTheme() {
         const toggleBtn = document.getElementById("theme-toggle");
-        // 1. 讀取儲存的設定
         const savedTheme = localStorage.getItem("theme");
-        // 2. 或是讀取系統偏好
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         
         let currentTheme = savedTheme || (prefersDark ? "dark" : "light");
         
-        // 套用主題
         document.body.setAttribute("data-theme", currentTheme);
         updateThemeIcon(currentTheme);
 
@@ -420,11 +438,7 @@
             hideLoading();
             
             const statusBar = document.getElementById("status-bar");
-            // 讓顯示名稱更漂亮
-            let modeDisplay = "Standard";
-            if (modeVal === "hybrid") modeDisplay = "Hybrid";
-            
-            if (statusBar) statusBar.innerText = `Mode: ${modeDisplay} | ${solver.words.length} words`;
+            if (statusBar) statusBar.innerText = `${solver.words.length} possible words`;
         } catch (e) {
             console.error(e);
             await showModal("Init Error", "Failed to initialize: " + e.message);
@@ -485,7 +499,7 @@
                         await initGame();
                     }
                 } else {
-                    if (statusBar) statusBar.innerText = `Remaining: ${solver.words.length} words`;
+                    if (statusBar) statusBar.innerText = `Remaining: ${solver.words.length} possible words`;
                 }
             } catch (e) {
                 console.error(e);
@@ -525,7 +539,7 @@
 
     // --- Event Listeners ---
     document.addEventListener('DOMContentLoaded', () => {
-        initTheme(); // 初始化主題
+        initTheme();
 
         const submitBtn = document.getElementById("submit-btn");
         const restartBtn = document.getElementById("restart-btn");
