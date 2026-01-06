@@ -34,5 +34,5 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "🤖 Auto-update: Add today's Wordle answer"
-          file_pattern: 'data/answers.csv'
+          file_pattern: 'data/*.csv'
           branch: main # 或是 master，請確認你的預設分支名稱
