@@ -2,8 +2,8 @@ name: Daily Wordle Update
 
 on:
   schedule:
-    # Trigger at UTC 16:05
-    - cron: '5 16 * * *'
+    # Trigger at UTC 08:25
+    - cron: '25 8 * * *'
   workflow_dispatch: # 允許手動點擊按鈕觸發 (方便測試)
 
 permissions:
