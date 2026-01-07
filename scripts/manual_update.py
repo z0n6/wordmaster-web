@@ -56,54 +56,39 @@ def append_word_to_file(filepath, word):
         return False
 
 def run_update(days_to_check):
-    # 1. 載入兩個資料庫
     existing_answers = load_word_set(ANSWERS_PATH)
     existing_vocab = load_word_set(VOCAB_PATH)
     
-    print(f"資料庫狀態:")
-    print(f"- Answers 數: {len(existing_answers)}")
-    print(f"- Vocab 數量:   {len(existing_vocab)}")
-    print(f"準備檢查過去 {days_to_check} 天的資料...\n")
-
-    new_answers_count = 0
-    new_vocab_count = 0
     today = datetime.date.today()
     
+    # 這裡範圍改回從 days_to_check 到 0 (包含今天)
     for i in range(days_to_check, -1, -1):
         target_date = today - datetime.timedelta(days=i)
-        date_str = target_date.strftime("%Y-%m-%d")
-        
         word = get_word_by_date(target_date)
+        
+        is_today = (i == 0) # 標記是否為今天
         
         if word:
             log_msg = []
             
-            # 檢查 Answers
-            if word not in existing_answers:
+            # 1. 檢查 Answers (如果是今天，強制跳過；如果不是今天，且不在庫中，則新增)
+            if not is_today and word not in existing_answers:
                 append_word_to_file(ANSWERS_PATH, word)
                 existing_answers.add(word)
-                new_answers_count += 1
                 log_msg.append("加入 Answer")
             
-            # 檢查 Vocab (如果單字是新的，通常也需要加入 vocab)
+            # 2. 檢查 Vocab (無論哪一天，只要不在庫中就新增)
             if word not in existing_vocab:
                 append_word_to_file(VOCAB_PATH, word)
                 existing_vocab.add(word)
-                new_vocab_count += 1
                 log_msg.append("加入 Vocab")
                 
             if log_msg:
-                print(f"[{date_str}] {word} - >>> {' & '.join(log_msg)} <<<")
-            else:
-                print(f"[{date_str}] {word} - 已存在 (跳過)")
-        else:
-            print(f"[{date_str}] 無資料")
-        
+                prefix = "[今日]" if is_today else f"[{target_date}]"
+                print(f"{prefix} {word} - >>> {' & '.join(log_msg)} <<<")
+            # 僅顯示有變動的，或是你可以選擇全部顯示
+            
         time.sleep(0.3)
-
-    print(f"\n更新完成！")
-    print(f"新增 Answers: {new_answers_count}")
-    print(f"新增 Vocab:   {new_vocab_count}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="手動更新 Wordle 答案庫與字庫。")
